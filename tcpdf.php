@@ -1783,6 +1783,13 @@ class TCPDF {
 	protected $pdfa_version = 1;
 
 	/**
+	 * If true set the document to PDF/UA mode.
+	 * @protected
+	 * @since 6.10.2 (2025-12-29)
+	 */
+	protected $pdfu_mode = false;
+
+	/**
 	 * Document creation date-time
 	 * @protected
 	 * @since 5.9.152 (2012-03-22)
@@ -9898,7 +9905,10 @@ class TCPDF {
 		//$out .= ' /URI <<>>';
 		$out .= ' /Metadata '.$xmpobj.' 0 R';
 		//$out .= ' /StructTreeRoot <<>>';
-		//$out .= ' /MarkInfo <<>>';
+		// Add MarkInfo dictionary for PDF/UA compliance
+		if ($this->pdfu_mode) {
+			$out .= ' /MarkInfo << /Marked true >>';
+		}
 		if (isset($this->l['a_meta_language'])) {
 			$out .= ' /Lang '.$this->_textstring($this->l['a_meta_language'], $oid);
 		}
@@ -14194,6 +14204,23 @@ class TCPDF {
             $this->PDFVersion = '1.7';
         } else {
 			$this->PDFVersion = $version;
+		}
+	}
+
+	/**
+	 * Enable or disable PDF/UA (Universal Accessibility) mode.
+	 * When enabled, adds MarkInfo dictionary and other accessibility features.
+	 * @param bool $enabled True to enable PDF/UA mode, false to disable
+	 * @public
+	 * @since 6.10.2 (2025-12-29)
+	 */
+	public function setPdfUMode($enabled) {
+		$this->pdfu_mode = (bool) $enabled;
+		if ($this->pdfu_mode) {
+			// PDF/A and PDF/UA are mutually exclusive
+			$this->pdfa_mode = false;
+			// PDF/UA requires PDF version 1.7
+			$this->setPDFVersion('1.7');
 		}
 	}
 
