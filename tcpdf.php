@@ -4974,6 +4974,45 @@ class TCPDF {
 	}
 
 	/**
+	 * Set alt-text (Contents) for the last created annotation or a specific link.
+	 * This is required for PDF/UA compliance (Rules 7.18.1 and 7.18.5).
+	 *
+	 * @param string $alttext The alternative text description for the annotation/link
+	 * @param int $link Optional link identifier. If not provided, applies to last annotation on current page.
+	 * @since 6.9.000 (2025-12-30)
+	 * @public
+	 */
+	public function setLinkAltText($alttext, $link = null) {
+		if ($this->page <= 0) {
+			$page = 1;
+		} else {
+			$page = $this->page;
+		}
+		if (!isset($this->PageAnnots[$page])) {
+			return;
+		}
+		if ($link !== null) {
+			// Find annotation with matching link
+			foreach ($this->PageAnnots[$page] as $key => $pl) {
+				if (isset($pl['opt']['url']) && $pl['opt']['url'] == $link) {
+					$this->PageAnnots[$page][$key]['opt']['linkalttext'] = $alttext;
+					return;
+				}
+				if (isset($pl['opt']['dest']) && $pl['opt']['dest'] == $link) {
+					$this->PageAnnots[$page][$key]['opt']['linkalttext'] = $alttext;
+					return;
+				}
+			}
+		} else {
+			// Apply to last annotation on current page
+			$lastkey = count($this->PageAnnots[$page]) - 1;
+			if ($lastkey >= 0) {
+				$this->PageAnnots[$page][$lastkey]['opt']['linkalttext'] = $alttext;
+			}
+		}
+	}
+
+	/**
 	 * Embed the attached files.
 	 * @since 6.9.000 (2025-02-11)
 	 * @public
@@ -8347,8 +8386,24 @@ class TCPDF {
 						$annots .= ' /FT /'.$pl['opt']['ft'];
 						$formfield = true;
 					}
-					if ($pl['opt']['subtype'] !== 'Link') {
-						$annots .= ' /Contents '.$this->_textstring($pl['txt'], $annot_obj_id);
+					// Add Contents key for PDF/UA compliance
+					$contents_text = '';
+					if (isset($pl['opt']['contents'])) {
+						// Use explicit Contents from options if provided
+						$contents_text = $pl['opt']['contents'];
+					} elseif ($pl['opt']['subtype'] !== 'Link') {
+						// For non-Link annotations, use txt parameter as Contents
+						$contents_text = $pl['txt'];
+					} elseif ($this->pdfu_mode && $pl['opt']['subtype'] === 'Link') {
+						// For Links in PDF/UA mode, use txt parameter or linkalttext if available
+						if (isset($pl['opt']['linkalttext'])) {
+							$contents_text = $pl['opt']['linkalttext'];
+						} else {
+							$contents_text = $pl['txt'];
+						}
+					}
+					if (!empty($contents_text)) {
+						$annots .= ' /Contents '.$this->_textstring($contents_text, $annot_obj_id);
 					}
 					$annots .= ' /P '.$this->page_obj_id[$n].' 0 R';
 					$annots .= ' /NM '.$this->_datastring(sprintf('%04u-%04u', $n, $key), $annot_obj_id);
