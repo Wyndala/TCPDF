@@ -1790,6 +1790,20 @@ class TCPDF {
 	protected $pdfu_mode = false;
 
 	/**
+	 * Structure tree root object number for PDF/UA.
+	 * @protected
+	 * @since 6.10.2 (2025-12-30)
+	 */
+	protected $struct_tree_root_objid = 0;
+
+	/**
+	 * Structure tree elements for PDF/UA.
+	 * @protected
+	 * @since 6.10.2 (2025-12-30)
+	 */
+	protected $struct_tree_elements = array();
+
+	/**
 	 * Document creation date-time
 	 * @protected
 	 * @since 5.9.152 (2012-03-22)
@@ -9835,6 +9849,43 @@ class TCPDF {
 	}
 
 	/**
+	 * Output Structure Tree Root for PDF/UA compliance.
+	 * Creates a basic structure tree with a Document root element.
+	 * @return int object id
+	 * @protected
+	 * @since 6.10.2 (2025-12-30)
+	 */
+	protected function _putStructTree() {
+		if ($this->struct_tree_root_objid > 0) {
+			// Already created
+			return $this->struct_tree_root_objid;
+		}
+
+		// Create structure tree root object
+		$oid = $this->_newobj();
+		$this->struct_tree_root_objid = $oid;
+
+		$out = '<< ';
+		$out .= ' /Type /StructTreeRoot';
+
+		// For a basic implementation, create a simple Document structure element
+		// This will be enhanced in future modifications to support actual content tagging
+		if (!empty($this->struct_tree_elements)) {
+			$out .= ' /K [';
+			foreach ($this->struct_tree_elements as $elem) {
+				$out .= ' '.$elem.' 0 R';
+			}
+			$out .= ' ]';
+		}
+
+		$out .= ' >>';
+		$out .= "\n".'endobj';
+		$this->_out($out);
+
+		return $oid;
+	}
+
+	/**
 	 * Output Catalog.
 	 * @return int object id
 	 * @protected
@@ -9904,7 +9955,11 @@ class TCPDF {
 		//$out .= ' /AA <<>>';
 		//$out .= ' /URI <<>>';
 		$out .= ' /Metadata '.$xmpobj.' 0 R';
-		//$out .= ' /StructTreeRoot <<>>';
+		// Add StructTreeRoot for PDF/UA compliance
+		if ($this->pdfu_mode) {
+			$structTreeObj = $this->_putStructTree();
+			$out .= ' /StructTreeRoot '.$structTreeObj.' 0 R';
+		}
 		// Add MarkInfo dictionary for PDF/UA compliance
 		if ($this->pdfu_mode) {
 			$out .= ' /MarkInfo << /Marked true >>';
