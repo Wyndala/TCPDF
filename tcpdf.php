@@ -8193,6 +8193,10 @@ class TCPDF {
 			}
 			$out .= $this->_getannotsrefs($n);
 			$out .= ' /PZ '.$this->pagedim[$n]['PZ'];
+			// Add Tabs key for PDF/UA compliance
+			if ($this->pdfu_mode) {
+				$out .= ' /Tabs /S';
+			}
 			$out .= ' >>';
 			$out .= "\n".'endobj';
 			$this->_out($out);
