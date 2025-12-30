@@ -4563,6 +4563,21 @@ class TCPDF {
 		if ($size < 0) {
 			$size = 0;
 		}
+		// Map core fonts to embedded fonts for PDF/UA compliance
+		if ($this->pdfu_mode && empty($fontfile)) {
+			$family_lower = strtolower($family);
+			// Map core fonts to DejaVu equivalents
+			$core_font_map = array(
+				'helvetica' => 'dejavusans',
+				'times' => 'dejavuserif',
+				'courier' => 'dejavusansmono',
+				'symbol' => 'dejavusans',
+				'zapfdingbats' => 'dejavusans'
+			);
+			if (isset($core_font_map[$family_lower])) {
+				$family = $core_font_map[$family_lower];
+			}
+		}
 		// try to add font (if not already added)
 		$fontdata = $this->AddFont($family, $style, $fontfile, $subset);
 		$this->FontFamily = $fontdata['family'];
@@ -9014,6 +9029,10 @@ class TCPDF {
 			$font = $this->getFontBuffer($k);
 			$type = $font['type'];
 			$name = $font['name'];
+			// Skip core fonts in PDF/UA mode (use embedded fonts instead)
+			if ($type == 'core' && $this->pdfu_mode) {
+				continue;
+			}
 			if ($type == 'core') {
 				// standard core font
 				$out = $this->_getobj($this->font_obj_ids[$k])."\n";
@@ -10060,7 +10079,14 @@ class TCPDF {
 				}
 				$out .= ' >> >>';
 			}
-			$font = $this->getFontBuffer((($this->pdfa_mode) ? 'pdfa' : '') .'helvetica');
+			// Use embedded font for PDF/UA compliance
+			$annotation_font = 'helvetica';
+			if ($this->pdfu_mode) {
+				$annotation_font = 'dejavusans';
+			} elseif ($this->pdfa_mode) {
+				$annotation_font = 'pdfahelvetica';
+			}
+			$font = $this->getFontBuffer($annotation_font);
 			$out .= ' /DA ' . $this->_datastring('/F'.$font['i'].' 0 Tf 0 g');
 			$out .= ' /Q '.(($this->rtl)?'2':'0');
 			//$out .= ' /XFA ';
