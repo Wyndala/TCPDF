@@ -3696,7 +3696,15 @@ class TCPDF {
 				$this->setXY($this->original_lMargin, $footer_y);
 			}
 			$this->setFont($this->footer_font[0], $this->footer_font[1], $this->footer_font[2]);
+			// Mark footer as artifact for PDF/UA compliance
+			if ($this->pdfu_mode) {
+				$this->_out('/Artifact << /Type /Pagination >> BDC');
+			}
 			$this->Footer();
+			// End artifact marking
+			if ($this->pdfu_mode) {
+				$this->_out('EMC');
+			}
 			//restore position
 			if ($this->rtl) {
 				$this->setXY($this->original_rMargin, $this->tMargin);
@@ -22904,6 +22912,11 @@ class TCPDF {
 			$rb_x = $xt + $w;
 		}
 		// print XObject Template + Transformation matrix
+		// Mark header as artifact for PDF/UA compliance
+		$is_header = ($id == $this->header_xobjid);
+		if ($this->pdfu_mode && $is_header) {
+			$this->_out('/Artifact << /Type /Pagination >> BDC');
+		}
 		$this->StartTransform();
 		// translate and scale
 		$sx = ($w / $ow);
@@ -22919,6 +22932,10 @@ class TCPDF {
 		// set object
 		$this->_out('/'.$id.' Do');
 		$this->StopTransform();
+		// End artifact marking
+		if ($this->pdfu_mode && $is_header) {
+			$this->_out('EMC');
+		}
 		// add annotations
 		if (!empty($this->xobjects[$id]['annotations'])) {
 			foreach ($this->xobjects[$id]['annotations'] as $annot) {
